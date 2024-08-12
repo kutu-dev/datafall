@@ -1,55 +1,70 @@
-use std::{
-    path::PathBuf,
+use tokio::{
     fs::{self, File},
-    io::{self, Cursor}
+    io,
 };
 
 use reqwest::{
-    blocking::Client,
-    header::{
-        RANGE,
-    },
+    Client,
     Url,
-    StatusCode,
 };
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::chunk;
 
-pub fn split_download(client: &Client, url: Url, mut final_file: File, file_size: u64) -> Result<(), String> {
+pub async fn split_download(client: &Client, url: Url, mut final_file: File, file_size: u64) -> Result<(), String> {
     let mut hasher = DefaultHasher::new();
     url.as_str().hash(&mut hasher);
     file_size.hash(&mut hasher);
     let file_hash = hasher.finish();
 
-    println!("File hash: {file_hash}");
+    println!("{file_hash}: Starting split download of resource '{url}'");
 
     const NUM_OF_CHUNKS: u64 = 16;
 
     let chunk_size = file_size / NUM_OF_CHUNKS;
-    println!("Chunk size: {chunk_size} bytes");
+    println!("{file_hash}: Chunk size: {chunk_size} bytes");
+
+    let mut tasks = Vec::new();
 
     for chunk_num in 0..NUM_OF_CHUNKS {
-        chunk::download_chunk(&client, url.clone(), file_hash, chunk_num, chunk_size, NUM_OF_CHUNKS, file_size)?;
+        let url = url.clone();
+        let client = reqwest::Client::new();
+
+        let task = tokio::spawn(async move {
+            chunk::download_chunk(&client, url, file_hash, chunk_num, chunk_size, NUM_OF_CHUNKS, file_size).await;
+        });
+
+       tasks.push(task); 
     }
 
-    println!("Merging downloaded chunks...");
-    for chunk_num in 0..NUM_OF_CHUNKS {
-        println!("Merging chunk {chunk_num}");
+    for task in tasks {
+        task
+        .await
+        .map_err(|error| format!("{file_hash}: A chunk task failed: {error}"))?;
+    }
 
-        let chunk_path = chunk::get_chunk_path(file_hash, chunk_num)?;
+
+    for chunk_num in 0..NUM_OF_CHUNKS {
+        println!("{file_hash}: Merging chunk {chunk_num}");
+
+        let chunk_path = chunk::get_chunk_path(file_hash, chunk_num).await?;
 
         let mut chunk_file = File
             ::open(&chunk_path)
-            .map_err(|error| format!("The chunk file is missing!: {error}"))?;
+            .await
+            .map_err(|error| format!("{file_hash}: The chunk file is missing!: {error}"))?;
 
         io::copy(&mut chunk_file, &mut final_file)
-            .map_err(|error| format!("Copying the chunk file data to the final file failed: {error}"))?;
+            .await
+            .map_err(|error| format!("{file_hash}: Copying the chunk file data to the final file failed: {error}"))?;
 
         fs::remove_file(&chunk_path)
-         .map_err(|error| format!("Failed to remove the chunk file: {error}"))?;
+         .await
+         .map_err(|error| format!("{file_hash}: Failed to remove the chunk file: {error}"))?;
     }
+
+    println!("Finished!");
 
     Ok(())
 }

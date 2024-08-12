@@ -29,6 +29,7 @@
           pkg-config
           openssl
           ripgrep
+          gtk4
         ];
       };
     });

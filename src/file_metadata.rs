@@ -1,5 +1,5 @@
 use reqwest::{
-    blocking::Client,
+    Client,
     header::{
         ACCEPT_RANGES,
         CONTENT_LENGTH,
@@ -15,10 +15,11 @@ pub struct FileMetadata {
 }
 
 impl FileMetadata {
-    pub fn new(client: &Client, url: Url) -> Result<FileMetadata, String> {
+    pub async fn new(client: &Client, url: Url) -> Result<FileMetadata, String> {
         let response = client
             .head(url.clone())
             .send()
+            .await
             .map_err(|error| format!("Getting the headers for '{url}' failed: {error}"))?;
 
         let headers = response.headers();
