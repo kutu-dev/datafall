@@ -1,0 +1,8 @@
+[package]
+name = "datafall"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.5", features = ["blocking"] }
+dirs = "5.0.1"
