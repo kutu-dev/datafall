@@ -30,6 +30,7 @@
           openssl
           ripgrep
           gtk4
+          libadwaita
         ];
       };
     });
