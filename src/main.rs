@@ -14,12 +14,48 @@ impl SimpleComponent for App {
     
     view! {
         gtk::Window {
-            
+            set_title: Some("DataFall"),
+            set_default_width: 300,
+            set_default_height: 100,
+
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_margin_top: 20,
+                set_margin_start: 40,
+                set_margin_end: 40,
+
+                gtk::ListBox{
+                    set_selection_mode: gtk::SelectionMode::None,
+
+                    gtk::ListBoxRow {
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Vertical,
+
+                            gtk::Label {
+                                set_label: "Monty Python",
+                            },
+
+                            gtk::ProgressBar {
+                                set_fraction: 0.5,
+                            },
+                        }
+                    },
+                    gtk::ListBoxRow {
+                        gtk::Label {
+                            set_label: "TEST",
+                        },
+
+                        gtk::ProgressBar {
+                            set_fraction: 0.5,
+                        },
+                    },
+                },
+            }
         }
     }
 
     fn init(
-        counter: Self::Init,
+        _: Self::Init,
         window: Self::Root,
         sender: ComponentSender<Self>,
     ) -> relm4::ComponentParts<Self> {
@@ -37,43 +73,4 @@ impl SimpleComponent for App {
 async fn main() {
     let app = RelmApp::new("dev.dobon.datafall");
     app.run::<App>(());
-}
-
-
-
-
-
-
-
-
-
-
-
-async fn stale() -> Result<(), String> {
-    let mut tasks = Vec::new();
-
-    let download_urls = vec![
-        "https://myrient.erista.me/files/Redump/Nintendo%20-%20Wii%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/Super%20Mario%20Galaxy%20%28Europe%2C%20Australia%29%20%28En%2CFr%2CDe%2CEs%2CIt%29.zip",
-        "https://myrient.erista.me/files/Redump/Nintendo%20-%20Wii%20-%20NKit%20RVZ%20%5Bzstd-19-128k%5D/Super%20Mario%20Galaxy%202%20%28Europe%29%20%28En%2CFr%2CDe%2CEs%2CIt%29.zip",
-    ];
-
-    for url in download_urls {
-        let task = tokio::spawn(async {
-            let result = datafall::download_file(url).await;
-            
-            if let Err(error) = result {
-                println!("{error}");
-            }
-        });
-
-        tasks.push(task);
-    }
-
-    for task in tasks {
-        task
-        .await
-        .map_err(|error| format!("A file download task has failed: {error}"))?;
-    }
-
-    Ok(())
 }
