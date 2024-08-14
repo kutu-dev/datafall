@@ -29,8 +29,10 @@
           pkg-config
           openssl
           ripgrep
+          gtk3
           gtk4
           libadwaita
+          librsvg
         ];
       };
     });
