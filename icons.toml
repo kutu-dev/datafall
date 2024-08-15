@@ -1,1 +1,7 @@
-icons = ["plus","clock","folder-open-filled"]
+icons = [
+  "plus-large",
+  "menu-large",
+  "clock",
+  "folder-open-filled",
+  "edit",
+]
