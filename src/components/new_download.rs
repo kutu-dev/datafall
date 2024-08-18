@@ -1,8 +1,4 @@
-use relm4::{
-    prelude::*,
-    gtk::prelude::*,
-    adw::prelude::*,
-};
+use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
 
 use reqwest::Url;
 
@@ -30,8 +26,12 @@ impl Component for NewDownload {
     type Input = NewDownloadInput;
     type Output = NewDownloadOutput;
     type CommandOutput = ();
-    
-    fn init(_init: Self::Init, _root: Self::Root, _sender: ComponentSender<Self>) -> ComponentParts<Self> {
+
+    fn init(
+        _init: Self::Init,
+        _root: Self::Root,
+        _sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
         let model = Self {
             error_text: String::new(),
         };
@@ -41,7 +41,13 @@ impl Component for NewDownload {
         ComponentParts { model, widgets }
     }
 
-    fn update_with_view(&mut self, widgets: &mut Self::Widgets, input: Self::Input, sender: ComponentSender<Self>, root: &Self::Root) {
+    fn update_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        input: Self::Input,
+        sender: ComponentSender<Self>,
+        root: &Self::Root,
+    ) {
         match input {
             Self::Input::Create => {
                 let entry = widgets.entry.text().to_string();
@@ -49,26 +55,28 @@ impl Component for NewDownload {
 
                 match url {
                     Ok(url) => {
-                        sender.output(Self::Output::Create(url)).expect("Sending the URL to the main window failed!");
+                        sender
+                            .output(Self::Output::Create(url))
+                            .expect("Sending the URL to the main window failed!");
                         sender.input(Self::Input::Close);
                     }
                     Err(_) => {
                         sender.input(Self::Input::InvalidUrl);
                     }
                 };
-            },
+            }
 
             Self::Input::Close => {
                 widgets.entry.set_text("");
                 widgets.entry.remove_css_class("error");
                 self.error_text = String::from("");
                 root.close();
-            },
+            }
 
             Self::Input::InvalidUrl => {
                 self.error_text = String::from("The URL is invalid!");
                 widgets.entry.add_css_class("error");
-            },
+            }
         }
 
         self.update_view(widgets, sender);

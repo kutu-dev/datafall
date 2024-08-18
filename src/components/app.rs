@@ -1,20 +1,15 @@
-use relm4::{
-    prelude::*,
-    gtk::prelude::*,
-    adw::prelude::*,
-};
+use relm4::{adw::prelude::*, factory::FactoryVecDeque, gtk::prelude::*, prelude::*};
 
-use reqwest::Url;
+use reqwest::{Client, Url};
 
 use relm4_icons::icon_names;
 
-use crate::components::{
-    NewDownload,
-    NewDownloadOutput,
-};
+use crate::components::{DownloadItem, NewDownload, NewDownloadOutput};
 
 pub struct App {
     new_download: Controller<NewDownload>,
+    download_factory: FactoryVecDeque<DownloadItem>,
+    client: Client,
 }
 
 #[derive(Debug)]
@@ -30,16 +25,31 @@ impl Component for App {
     type Output = ();
     type CommandOutput = ();
 
-    fn init(_init: Self::Init, _root: Self::Root, sender: ComponentSender<Self>) -> ComponentParts<Self> {
-        let new_download = NewDownload::builder()
-            .launch(())
-            .forward(sender.input_sender(), |output| match output {
+    fn init(
+        _init: Self::Init,
+        _root: Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        let new_download = NewDownload::builder().launch(()).forward(
+            sender.input_sender(),
+            |output| match output {
                 NewDownloadOutput::Create(url) => Self::Input::StartNewDownload(url),
-            });
+            },
+        );
+
+        let download_factory = FactoryVecDeque::builder()
+            .launch_default()
+            .forward(sender.input_sender(), |_| Self::Input::CreateNewDownload);
+
+        let client = Client::new();
 
         let model = Self {
-            new_download
+            new_download,
+            download_factory,
+            client,
         };
+
+        let download_items = model.download_factory.widget();
 
         let widgets = view_output!();
 
@@ -50,10 +60,10 @@ impl Component for App {
         match input {
             Self::Input::CreateNewDownload => {
                 self.new_download.widget().present(root);
-            },
+            }
 
             Self::Input::StartNewDownload(url) => {
-                println!("EO: {url}");
+                self.download_factory.guard().push_back((self.client.clone(), url));
             }
         }
     }
@@ -84,8 +94,12 @@ impl Component for App {
                 adw::ViewStack {
                     set_vexpand: true,
 
-                    add_titled[Some("Queue"), " Queue"] = &gtk::Label{
-                        set_label: "ONE",
+                    add_titled[Some("Queue"), " Queue"] = &gtk::ScrolledWindow {
+                        #[local_ref]
+                         download_items -> gtk::ListBox {
+                            add_css_class: "boxed-list-separate",
+                            set_selection_mode: gtk::SelectionMode::None,
+                        }
                     } -> {
                         set_icon_name: Some(icon_names::FOLDER_OPEN_FILLED),
                     },

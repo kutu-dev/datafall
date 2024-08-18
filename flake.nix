@@ -33,6 +33,8 @@
           gtk4
           libadwaita
           librsvg
+          adwaita-icon-theme
+          dejavu_fonts
         ];
       };
     });
