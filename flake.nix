@@ -29,6 +29,12 @@
           pkg-config
           openssl
           ripgrep
+          gtk3
+          gtk4
+          libadwaita
+          librsvg
+          adwaita-icon-theme
+          dejavu_fonts
         ];
       };
     });

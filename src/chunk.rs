@@ -1,53 +1,43 @@
-use std::{
-    path::PathBuf,
-    fs::{self, File},
-    io::{self, Cursor}
-};
+use std::path::PathBuf;
+use tokio::fs::{self, File};
 
 use reqwest::{
-    blocking::Client,
-    header::{
-        RANGE,
-    },
+    Client,
     Url,
-    StatusCode,
 };
-
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 use crate::download_fragment;
 
-pub fn get_chunk_path(file_hash: u64, chunk_num: u64) -> Result<PathBuf, String> {
+pub async fn get_chunk_path(file_hash: &str, chunk_num: u64) -> Result<PathBuf, String> {
     let mut chunk_path = dirs
         ::cache_dir()
         .ok_or("Unable to get the cache directory")?;
 
     chunk_path.push("datafall");
+    chunk_path.push(file_hash);
     
     if !chunk_path.is_dir() {
         fs::create_dir_all(&chunk_path)
-            .map_err(|error| format!("Failed to create the cache dir: {error}"))?;
+            .await
+            .map_err(|error| format!("Failed to create the chunks cache dir: {error}"))?;
     }
 
-    chunk_path.push(format!("{file_hash}.part{chunk_num}"));
+    chunk_path.push(format!("part{chunk_num}.fragment"));
 
     Ok(chunk_path)
 }
 
-pub fn download_chunk(client: &Client, url: Url, file_hash: u64, chunk_num: u64, chunk_size: u64, num_of_chunks: u64, file_size: u64) -> Result<(), String> {
-    assert!(chunk_num < num_of_chunks);
+pub async fn download_chunk(client: Client, url: Url, chunk_num: u64, num_of_chunks: u64, chunk_size: u64, file_hash: &str, file_size: u64) -> Result<(), String> {
+     assert!(chunk_num < num_of_chunks);
 
-    println!("Chunk: {chunk_num}");
-
-    let chunk_path = get_chunk_path(file_hash, chunk_num)?;
+    let chunk_path = get_chunk_path(file_hash, chunk_num).await?;
 
     if chunk_path.is_file() {
-        println!("This chunk has already been downloaded, skipping!");
         return Ok(());
     }
 
-    let fragment_file = File
-        ::create(chunk_path)
+    let fragment_file = File::create(chunk_path)
+        .await
         .map_err(|error| format!("Couldn't create a new empty file: {error}"))?;
 
     let start = chunk_size * chunk_num;
@@ -59,10 +49,8 @@ pub fn download_chunk(client: &Client, url: Url, file_hash: u64, chunk_num: u64,
     if chunk_num == num_of_chunks - 1 {
         end += file_size - chunk_size * 16 + 1;
     }
-
-    println!("With range: {start}-{end}");
         
-    download_fragment::download_fragment(&client, url, fragment_file, Some((start, end)))?;
+    download_fragment::download_fragment(&client, url, fragment_file, Some((start, end))).await?;
 
     Ok(())
 }

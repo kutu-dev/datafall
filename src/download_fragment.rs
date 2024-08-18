@@ -1,11 +1,15 @@
 use std::{
     path::PathBuf,
+    io::Cursor,
+};
+
+use tokio::{
     fs::{self, File},
-    io::{self, Cursor}
+    io,
 };
 
 use reqwest::{
-    blocking::Client,
+    Client,
     header::{
         RANGE,
     },
@@ -15,7 +19,7 @@ use reqwest::{
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-pub fn download_fragment(client: &Client, url: Url, mut file: File, range: Option<(u64, u64)>) -> Result<(), String> {
+pub async fn download_fragment(client: &Client, url: Url, mut file: File, range: Option<(u64, u64)>) -> Result<(), String> {
     let mut request = client.get(url);
 
     if let Some(range) = range {
@@ -24,6 +28,7 @@ pub fn download_fragment(client: &Client, url: Url, mut file: File, range: Optio
 
     let response = request
         .send()
+        .await
         .map_err(|error| format!("Downloading the file content failed: {error}"))?;
 
     if range.is_some() && response.status() != StatusCode::PARTIAL_CONTENT {
@@ -32,11 +37,14 @@ pub fn download_fragment(client: &Client, url: Url, mut file: File, range: Optio
 
      let file_data = response
         .bytes()
+        .await
         .map_err(|error| format!("Getting the response body as bytes failed: {error}"))?;
 
     let mut file_data = Cursor::new(file_data);
 
-    io::copy(&mut file_data, &mut file).map_err(|error| format!("Copying the file data failed: {error}"))?;
+    io::copy(&mut file_data, &mut file)
+        .await
+        .map_err(|error| format!("Copying the file data failed: {error}"))?;
 
     Ok(())
 }

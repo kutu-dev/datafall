@@ -1,2 +1,4 @@
-- Merge all fragment files.
-- Check if OK is not the response code.
+- Read NEXT commment
+- Add downloading plan.
+- Add Enter support on Add menu.
+- Add menu with stub settings and about button.
