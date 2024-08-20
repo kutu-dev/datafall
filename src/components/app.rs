@@ -4,7 +4,7 @@ use reqwest::{Client, Url};
 
 use relm4_icons::icon_names;
 
-use crate::components::{DownloadItem, NewDownload, NewDownloadOutput};
+use crate::components::{DownloadItem, DownloadItemOutput, NewDownload, NewDownloadOutput};
 
 pub struct App {
     new_download: Controller<NewDownload>,
@@ -16,6 +16,7 @@ pub struct App {
 pub enum AppInput {
     CreateNewDownload,
     StartNewDownload(Url),
+    CancelDownload(DynamicIndex),
 }
 
 #[relm4::component(pub)]
@@ -37,9 +38,12 @@ impl Component for App {
             },
         );
 
-        let download_factory = FactoryVecDeque::builder()
-            .launch_default()
-            .forward(sender.input_sender(), |_| Self::Input::CreateNewDownload);
+        let download_factory =
+            FactoryVecDeque::builder()
+                .launch_default()
+                .forward(sender.input_sender(), |output| match output {
+                    DownloadItemOutput::Cancel(index) => Self::Input::CancelDownload(index),
+                });
 
         let client = Client::new();
 
@@ -60,10 +64,21 @@ impl Component for App {
         match input {
             Self::Input::CreateNewDownload => {
                 self.new_download.widget().present(root);
+                // TODO: Remove before 1.0.0
+                self.download_factory.guard().push_back((
+                    self.client.clone(),
+                    Url::parse("https://example.com").unwrap(),
+                ));
             }
 
             Self::Input::StartNewDownload(url) => {
-                self.download_factory.guard().push_back((self.client.clone(), url));
+                self.download_factory
+                    .guard()
+                    .push_back((self.client.clone(), url));
+            }
+
+            Self::Input::CancelDownload(index) => {
+                self.download_factory.guard().remove(index.current_index());
             }
         }
     }
@@ -83,10 +98,12 @@ impl Component for App {
                     pack_start = &gtk::Button {
                         set_icon_name: icon_names::PLUS_LARGE,
                         connect_clicked => Self::Input::CreateNewDownload,
+                        set_tooltip_text: Some("Start a new download"),
                     },
 
                     pack_end = &gtk::Button {
-                        set_icon_name: icon_names::MENU_LARGE
+                        set_icon_name: icon_names::MENU_LARGE,
+                        set_tooltip_text: Some("Open application menu"),
                     },
                 },
 
@@ -101,7 +118,7 @@ impl Component for App {
                             set_selection_mode: gtk::SelectionMode::None,
                         }
                     } -> {
-                        set_icon_name: Some(icon_names::FOLDER_OPEN_FILLED),
+                        set_icon_name: Some(icon_names::ARROW4_DOWN),
                     },
 
                     add_titled[Some("History"), " History"] = &gtk::Label {

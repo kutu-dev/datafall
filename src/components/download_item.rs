@@ -1,17 +1,11 @@
-use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
-use chrono;
-use reqwest::{Client, Response, Url};
 use base64::{engine::general_purpose::URL_SAFE, Engine as _};
-use tokio::{
-    fs::File,
-    io,
-};
+use chrono;
+use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
+use relm4_icons::icon_names;
+use reqwest::{Client, Response, Url};
+use tokio::{fs::File, io};
 
-use crate::{
-    resource_metadata::ResourceMetadata,
-    download_fragment,
-    chunk,
-};
+use crate::{chunk, download_fragment, resource_metadata::ResourceMetadata};
 
 //TODO: Should be moved to a new module (maybe with get_chunk_path)
 fn get_filename(url: &Url) -> String {
@@ -34,10 +28,12 @@ pub fn get_hash(file_size: u64, url: &Url) -> String {
 
 pub struct DownloadItem {
     filename: String,
+    status: String,
     progress: f64,
     client: Client,
     url: Url,
     chunks_downloaded: u64,
+    download_finished: bool,
 }
 
 #[derive(Debug)]
@@ -45,6 +41,12 @@ pub enum DownloadItemInput {
     SplitDownload { file_size: u64, num_of_chunks: u64 },
     PlainDownload,
     MergeChunks(String, u64),
+    OpenFile,
+}
+
+#[derive(Debug)]
+pub enum DownloadItemOutput {
+    Cancel(DynamicIndex),
 }
 
 #[derive(Debug)]
@@ -59,7 +61,7 @@ pub enum DownloadItemCommandOutput {
 impl FactoryComponent for DownloadItem {
     type Init = (Client, Url);
     type Input = DownloadItemInput;
-    type Output = ();
+    type Output = DownloadItemOutput;
     type CommandOutput = DownloadItemCommandOutput;
     type ParentWidget = gtk::ListBox;
 
@@ -73,23 +75,28 @@ impl FactoryComponent for DownloadItem {
             client: init.0,
             url,
             chunks_downloaded: 0,
+            status: String::from("Getting resource metadata..."),
+            download_finished: false,
         };
 
         let client = model.client.clone();
         let url = model.url.clone();
         sender.oneshot_command(async move {
-            ResourceMetadata::new(client, url)
-                .await
-                .map_or_else(
-                    |error| Self::CommandOutput::Error(error),
-                    |value| Self::CommandOutput::ResourceMetadata(value)
-                )
+            ResourceMetadata::new(client, url).await.map_or_else(
+                |error| Self::CommandOutput::Error(error),
+                |value| Self::CommandOutput::ResourceMetadata(value),
+            )
         });
 
         model
     }
 
-    fn update_cmd(&mut self, message: Self::CommandOutput, sender: FactorySender<Self>) {
+    fn update_cmd_with_view(
+        &mut self,
+        widgets: &mut Self::Widgets,
+        message: Self::CommandOutput,
+        sender: FactorySender<Self>,
+    ) {
         match message {
             Self::CommandOutput::ResourceMetadata(resource_metadata) => {
                 self.progress += 0.1;
@@ -101,13 +108,13 @@ impl FactoryComponent for DownloadItem {
                             file_size: size,
                             num_of_chunks: 16,
                         });
-                        
+
                         return;
                     }
                 }
 
                 sender.input(Self::Input::PlainDownload);
-            },
+            }
 
             Self::CommandOutput::ChunkDownloaded(file_hash, num_of_chunks) => {
                 self.chunks_downloaded += 1;
@@ -117,21 +124,32 @@ impl FactoryComponent for DownloadItem {
                 if self.chunks_downloaded == num_of_chunks {
                     sender.input(Self::Input::MergeChunks(file_hash, num_of_chunks));
                 }
-            },
+            }
 
             Self::CommandOutput::DownloadFinished => {
+                self.status = String::from("Downloading finished!");
+                widgets.subtitle.add_css_class("success");
                 self.progress = 1.0;
-            },
+                self.download_finished = true;
+            }
 
             Self::CommandOutput::Error(error) => {
-                //TODO
-            },
+                self.status = error;
+                widgets.subtitle.add_css_class("error");
+            }
         }
+
+        self.update_view(widgets, sender);
     }
 
     fn update(&mut self, message: Self::Input, sender: FactorySender<Self>) {
         match message {
-            Self::Input::SplitDownload{file_size, num_of_chunks} => {
+            Self::Input::SplitDownload {
+                file_size,
+                num_of_chunks,
+            } => {
+                self.status = String::from("Downloading the resource fragments...");
+
                 let file_hash = get_hash(file_size, &self.url);
                 let chunk_size = file_size / num_of_chunks;
 
@@ -141,17 +159,27 @@ impl FactoryComponent for DownloadItem {
                     let file_hash = file_hash.clone();
 
                     sender.oneshot_command(async move {
-                        chunk::download_chunk(client, url, chunk_num, num_of_chunks, chunk_size, &file_hash, file_size)
-                            .await
-                            .map_or_else(
-                                |error| Self::CommandOutput::Error(error),
-                                |_| Self::CommandOutput::ChunkDownloaded(file_hash, num_of_chunks)
-                            )
+                        chunk::download_chunk(
+                            client,
+                            url,
+                            chunk_num,
+                            num_of_chunks,
+                            chunk_size,
+                            &file_hash,
+                            file_size,
+                        )
+                        .await
+                        .map_or_else(
+                            |error| Self::CommandOutput::Error(error),
+                            |_| Self::CommandOutput::ChunkDownloaded(file_hash, num_of_chunks),
+                        )
                     })
                 }
             }
 
             Self::Input::PlainDownload => {
+                self.status = String::from("Downloading the resource...");
+
                 let client = self.client.clone();
                 let url = self.url.clone();
                 let filename = self.filename.clone();
@@ -163,8 +191,9 @@ impl FactoryComponent for DownloadItem {
                         return Self::CommandOutput::Error(error);
                     }
                     let file = file.unwrap();
-                    
-                    let result = download_fragment::download_fragment(&client, url, file, None).await;
+
+                    let result =
+                        download_fragment::download_fragment(&client, url, file, None).await;
 
                     if let Err(error) = result {
                         return Self::CommandOutput::Error(error);
@@ -172,9 +201,10 @@ impl FactoryComponent for DownloadItem {
 
                     Self::CommandOutput::DownloadFinished
                 });
-            },
+            }
 
             Self::Input::MergeChunks(file_hash, num_of_chunks) => {
+                self.status = String::from("Merging the file fragments...");
                 let filename = self.filename.clone();
 
                 sender.oneshot_command(async move {
@@ -187,14 +217,13 @@ impl FactoryComponent for DownloadItem {
 
                     for chunk_num in 0..num_of_chunks {
                         let chunk_path = chunk::get_chunk_path(&file_hash, chunk_num).await;
-                        
+
                         if let Err(error) = chunk_path {
                             return Self::CommandOutput::Error(error);
                         };
                         let chunk_path = chunk_path.unwrap();
 
-                        let chunk_file = File
-                            ::open(&chunk_path)
+                        let chunk_file = File::open(&chunk_path)
                             .await
                             .map_err(|error| format!("The chunk file is missing!: {error}"));
 
@@ -203,9 +232,14 @@ impl FactoryComponent for DownloadItem {
                         };
                         let mut chunk_file = chunk_file.unwrap();
 
-                        let result = io::copy(&mut chunk_file, &mut final_file)
-                            .await
-                            .map_err(|error| format!("Copying the chunk file data to the final file failed: {error}"));
+                        let result =
+                            io::copy(&mut chunk_file, &mut final_file)
+                                .await
+                                .map_err(|error| {
+                                    format!(
+                                    "Copying the chunk file data to the final file failed: {error}"
+                                )
+                                });
 
                         if let Err(error) = result {
                             return Self::CommandOutput::Error(error);
@@ -215,23 +249,72 @@ impl FactoryComponent for DownloadItem {
                     Self::CommandOutput::DownloadFinished
                 });
             },
+
+            Self::Input::OpenFile => {
+                let file_path = "/home/kutu/downloads";
+                let app_launch_context = gtk::gio::AppLaunchContext::new();
+                gtk::gio::AppInfo::launch_default_for_uri(file_path, Some(&app_launch_context));
+            }
         }
     }
 
     view! {
-        gtk::ListBoxRow{
-            gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
+            gtk::ListBoxRow{
+                gtk::CenterBox {
+                    #[wrap(Some)]
+                    set_center_widget = &gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_margin_all: 20,
+                        set_spacing: 10,
 
-                gtk::Label {
-                    set_label: &self.filename,
-                },
+                        gtk::CenterBox {
+                            #[wrap(Some)]
+                            set_start_widget = &gtk::Box {
+                                set_orientation: gtk::Orientation::Vertical,
+                                set_spacing: 5,
 
-                gtk::ProgressBar {
-                    #[watch]
-                    set_fraction: self.progress,
+                                gtk::Label {
+                                    set_label: &self.filename,
+                                    set_halign: gtk::Align::Start,
+                                    add_css_class: "title",
+                                },
+
+                                #[name = "subtitle"]
+                                gtk::Label {
+                                    #[watch]
+                                    set_label: &self.status,
+                                    set_halign: gtk::Align::Start,
+                                    add_css_class: "subtitle",
+                                },
+                            },
+
+                            #[wrap(Some)]
+                            set_end_widget = if !&self.download_finished {
+                                &gtk::Button {
+                                    set_icon_name: icon_names::CROSS_LARGE,
+                                    set_tooltip_text: Some("Cancel the download"),
+                                    connect_clicked[sender, index] => move |_| {
+                                        sender
+                                            .output(Self::Output::Cancel(index.clone()))
+                                            .expect("Unable to send cancel message to the parent component");
+                                    },
+                                }
+                            } else {
+                                &gtk::Button {
+                                    set_icon_name: icon_names::FOLDER_OPEN_FILLED,
+                                    set_tooltip_text: Some("Open file location"),
+                                    connect_clicked => Self::Input::OpenFile,
+                                }
+                                
+                            },
+                        },
+
+                        gtk::ProgressBar {
+                            #[watch]
+                            set_fraction: self.progress,
+                        },
                 },
-            }
-        },
+            },
+        }
     }
 }

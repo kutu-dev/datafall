@@ -1,25 +1,20 @@
-use std::{
-    path::PathBuf,
-    io::Cursor,
-};
+use std::{io::Cursor, path::PathBuf};
 
 use tokio::{
     fs::{self, File},
     io,
 };
 
-use reqwest::{
-    Client,
-    header::{
-        RANGE,
-    },
-    Url,
-    StatusCode,
-};
+use reqwest::{header::RANGE, Client, StatusCode, Url};
 
 use std::hash::{DefaultHasher, Hash, Hasher};
 
-pub async fn download_fragment(client: &Client, url: Url, mut file: File, range: Option<(u64, u64)>) -> Result<(), String> {
+pub async fn download_fragment(
+    client: &Client,
+    url: Url,
+    mut file: File,
+    range: Option<(u64, u64)>,
+) -> Result<(), String> {
     let mut request = client.get(url);
 
     if let Some(range) = range {
@@ -32,10 +27,10 @@ pub async fn download_fragment(client: &Client, url: Url, mut file: File, range:
         .map_err(|error| format!("Downloading the file content failed: {error}"))?;
 
     if range.is_some() && response.status() != StatusCode::PARTIAL_CONTENT {
-        return Err(String::from("The status code wasn't partial content!"))
+        return Err(String::from("The status code wasn't 206 Partial Content!"));
     }
 
-     let file_data = response
+    let file_data = response
         .bytes()
         .await
         .map_err(|error| format!("Getting the response body as bytes failed: {error}"))?;
@@ -48,4 +43,3 @@ pub async fn download_fragment(client: &Client, url: Url, mut file: File, range:
 
     Ok(())
 }
-

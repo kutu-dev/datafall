@@ -1,10 +1,6 @@
 use reqwest::{
-    Client,
-    header::{
-        ACCEPT_RANGES,
-        CONTENT_LENGTH,
-    },
-    Url,
+    header::{ACCEPT_RANGES, CONTENT_LENGTH},
+    Client, Url,
 };
 
 #[derive(Debug)]
@@ -26,8 +22,10 @@ impl ResourceMetadata {
         let size = match headers.get(CONTENT_LENGTH) {
             Some(header) => Some(
                 header
-                    .to_str().map_err(|error| format!("Non visible characters found: {error}"))?
-                    .parse::<u64>().map_err(|error| format!("Invalid 'Content-Length' header: {error}"))?
+                    .to_str()
+                    .map_err(|error| format!("Non visible characters found: {error}"))?
+                    .parse::<u64>()
+                    .map_err(|error| format!("Invalid 'Content-Length' header: {error}"))?,
             ),
             None => None,
         };
@@ -35,10 +33,11 @@ impl ResourceMetadata {
         let accept_ranges = match headers.get(ACCEPT_RANGES) {
             Some(value) => {
                 let value = value
-                    .to_str().map_err(|error| format!("Non visible characters found: {error}"))?;
+                    .to_str()
+                    .map_err(|error| format!("Non visible characters found: {error}"))?;
 
                 value == "bytes"
-            },
+            }
             None => false,
         };
 
@@ -48,4 +47,3 @@ impl ResourceMetadata {
         })
     }
 }
-
