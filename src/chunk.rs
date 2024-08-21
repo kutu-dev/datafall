@@ -5,7 +5,7 @@ use reqwest::{Client, Url};
 
 use crate::download_fragment;
 
-pub async fn get_chunk_path(file_hash: &str, chunk_num: u64) -> Result<PathBuf, String> {
+pub async fn get_chunk_path(file_hash: &str, chunk_num: u64, temp: bool) -> Result<PathBuf, String> {
     let mut chunk_path = dirs::cache_dir().ok_or("Unable to get the cache directory")?;
 
     chunk_path.push("datafall");
@@ -17,7 +17,12 @@ pub async fn get_chunk_path(file_hash: &str, chunk_num: u64) -> Result<PathBuf, 
             .map_err(|error| format!("Failed to create the chunks cache dir: {error}"))?;
     }
 
-    chunk_path.push(format!("part{chunk_num}.fragment"));
+    let mut temp_suffix = "";
+    if temp {
+        temp_suffix = ".temp"
+    }
+    
+    chunk_path.push(format!("part{chunk_num}.fragment{temp_suffix}"));
 
     Ok(chunk_path)
 }
@@ -33,13 +38,14 @@ pub async fn download_chunk(
 ) -> Result<(), String> {
     assert!(chunk_num < num_of_chunks);
 
-    let chunk_path = get_chunk_path(file_hash, chunk_num).await?;
+    let final_chunk_path = get_chunk_path(file_hash, chunk_num, false).await?;
+    let temp_chunk_path = get_chunk_path(file_hash, chunk_num, true).await?;
 
-    if chunk_path.is_file() {
+    if temp_chunk_path.is_file() {
         return Ok(());
     }
 
-    let fragment_file = File::create(chunk_path)
+    let temp_fragment_file = File::create(temp_chunk_path.clone())
         .await
         .map_err(|error| format!("Couldn't create a new empty file: {error}"))?;
 
@@ -53,7 +59,10 @@ pub async fn download_chunk(
         end += file_size - chunk_size * 16 + 1;
     }
 
-    download_fragment::download_fragment(&client, url, fragment_file, Some((start, end))).await?;
+    download_fragment::download_fragment(&client, url, temp_fragment_file, Some((start, end))).await?;
+
+    fs::rename(temp_chunk_path, final_chunk_path).await
+        .map_err(|error| format!("Failed to rename the temporal fragment file"))?;
 
     Ok(())
 }

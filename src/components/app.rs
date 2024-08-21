@@ -1,13 +1,19 @@
 use relm4::{adw::prelude::*, factory::FactoryVecDeque, gtk::prelude::*, prelude::*};
+use relm4::actions::{RelmAction, RelmActionGroup};
 
 use reqwest::{Client, Url};
 
 use relm4_icons::icon_names;
 
-use crate::components::{DownloadItem, DownloadItemOutput, NewDownload, NewDownloadOutput};
+use crate::components::{DownloadItem, DownloadItemOutput, NewDownload, NewDownloadOutput, AboutDialog};
+
+relm4::new_action_group!(MainActionGroup, "main");
+relm4::new_stateless_action!(OpenAboutAction, MainActionGroup, "open-about");
+relm4::new_stateless_action!(CleanCacheAction, MainActionGroup, "clean-cache");
 
 pub struct App {
     new_download: Controller<NewDownload>,
+    about_dialog: Controller<AboutDialog>,
     download_factory: FactoryVecDeque<DownloadItem>,
     client: Client,
 }
@@ -17,6 +23,7 @@ pub enum AppInput {
     CreateNewDownload,
     StartNewDownload(Url),
     CancelDownload(DynamicIndex),
+    OpenAbout,
 }
 
 #[relm4::component(pub)]
@@ -28,7 +35,7 @@ impl Component for App {
 
     fn init(
         _init: Self::Init,
-        _root: Self::Root,
+        root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let new_download = NewDownload::builder().launch(()).forward(
@@ -37,6 +44,8 @@ impl Component for App {
                 NewDownloadOutput::Create(url) => Self::Input::StartNewDownload(url),
             },
         );
+
+        let about_dialog = AboutDialog::builder().launch(()).detach();
 
         let download_factory =
             FactoryVecDeque::builder()
@@ -49,6 +58,7 @@ impl Component for App {
 
         let model = Self {
             new_download,
+            about_dialog,
             download_factory,
             client,
         };
@@ -56,6 +66,25 @@ impl Component for App {
         let download_items = model.download_factory.widget();
 
         let widgets = view_output!();
+
+        let open_about_action: RelmAction<OpenAboutAction> = {
+            RelmAction::new_stateless(move |_| {
+                sender.input(Self::Input::OpenAbout);
+            })
+        };
+
+        let clean_cache_action: RelmAction<CleanCacheAction> = {
+            RelmAction::new_stateless(|_| {
+                println!("Clean cache");
+            })
+        };
+
+        let mut group = RelmActionGroup::<MainActionGroup>::new();
+
+        group.add_action(open_about_action);
+        group.add_action(clean_cache_action);
+
+        group.register_for_widget(&widgets.main_window);
 
         ComponentParts { model, widgets }
     }
@@ -79,7 +108,19 @@ impl Component for App {
 
             Self::Input::CancelDownload(index) => {
                 self.download_factory.guard().remove(index.current_index());
+            },
+
+            Self::Input::OpenAbout => {
+                self.about_dialog.widget().present(root);
             }
+        }
+    }
+
+    menu! {
+        main_menu: {
+            custom: "widget",
+            "Clean cache" => CleanCacheAction,
+            "About DataFall" => OpenAboutAction,
         }
     }
 
@@ -101,9 +142,12 @@ impl Component for App {
                         set_tooltip_text: Some("Start a new download"),
                     },
 
-                    pack_end = &gtk::Button {
+                    pack_end = &gtk::MenuButton {
                         set_icon_name: icon_names::MENU_LARGE,
                         set_tooltip_text: Some("Open application menu"),
+                        
+                        #[wrap(Some)]
+                        set_popover = &gtk::PopoverMenu::from_model(Some(&main_menu)) {}
                     },
                 },
 

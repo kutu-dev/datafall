@@ -4,6 +4,7 @@ use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
 use relm4_icons::icon_names;
 use reqwest::{Client, Response, Url};
 use tokio::{fs::File, io};
+use dirs;
 
 use crate::{chunk, download_fragment, resource_metadata::ResourceMetadata};
 
@@ -216,7 +217,7 @@ impl FactoryComponent for DownloadItem {
                     let mut final_file = final_file.unwrap();
 
                     for chunk_num in 0..num_of_chunks {
-                        let chunk_path = chunk::get_chunk_path(&file_hash, chunk_num).await;
+                        let chunk_path = chunk::get_chunk_path(&file_hash, chunk_num, false).await;
 
                         if let Err(error) = chunk_path {
                             return Self::CommandOutput::Error(error);
@@ -251,9 +252,21 @@ impl FactoryComponent for DownloadItem {
             },
 
             Self::Input::OpenFile => {
-                let file_path = "/home/kutu/downloads";
+                let download_dir = dirs::download_dir();
+                if let None = download_dir {
+                    println!("Could not find the download directory path");
+                    return;
+                };
+                let download_dir = download_dir.unwrap();
+
+                let download_dir_uri = format!("file://{}", download_dir.display());
                 let app_launch_context = gtk::gio::AppLaunchContext::new();
-                gtk::gio::AppInfo::launch_default_for_uri(file_path, Some(&app_launch_context));
+
+                let result = gtk::gio::AppInfo::launch_default_for_uri(&download_dir_uri, Some(&app_launch_context));
+
+                if let Err(error) = result {
+                    println!("Could not open the download directory: {error:?}");
+                }
             }
         }
     }
@@ -270,6 +283,10 @@ impl FactoryComponent for DownloadItem {
                         gtk::CenterBox {
                             #[wrap(Some)]
                             set_start_widget = &gtk::Box {
+                                // I could be better to find a way to set this
+                                // values as percentage
+                                set_size_request: (300, 0),
+
                                 set_orientation: gtk::Orientation::Vertical,
                                 set_spacing: 5,
 
@@ -293,6 +310,7 @@ impl FactoryComponent for DownloadItem {
                                 &gtk::Button {
                                     set_icon_name: icon_names::CROSS_LARGE,
                                     set_tooltip_text: Some("Cancel the download"),
+                                    set_size_request: (40, 40),
                                     connect_clicked[sender, index] => move |_| {
                                         sender
                                             .output(Self::Output::Cancel(index.clone()))
