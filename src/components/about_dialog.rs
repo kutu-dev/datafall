@@ -40,8 +40,10 @@ impl Component for AboutDialog{
     view! {
         adw::AboutDialog {
             set_application_name: "DataFall",
+            set_application_icon: "icon",
             set_developer_name: "Jorge \"Kutu\" Dobón Blanco",
             set_version: VERSION,
+            set_website: "https://github.com/kutu-dev/datafall",
             set_issue_url: "https://github.com/kutu-dev/datafall/issues",
             set_license_type: gtk::License::Mpl20,
         }

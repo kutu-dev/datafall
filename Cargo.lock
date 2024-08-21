@@ -187,6 +187,7 @@ dependencies = [
  "base64",
  "chrono",
  "dirs",
+ "glib-build-tools",
  "relm4",
  "relm4-components",
  "relm4-icons",
@@ -531,6 +532,12 @@ dependencies = [
  "smallvec",
  "thiserror",
 ]
+
+[[package]]
+name = "glib-build-tools"
+version = "0.17.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a65d79efe318ef2cbbbb37032b125866fd82c34ea44c816132621bbc552e716"
 
 [[package]]
 name = "glib-macros"

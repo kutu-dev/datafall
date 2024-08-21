@@ -9,3 +9,6 @@ update-flake:
 # See all the things that need to be done
 todo:
   rg TODO:
+
+license:
+  addlicense -l mpl .
