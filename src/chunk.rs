@@ -9,10 +9,16 @@ use reqwest::{Client, Url};
 
 use crate::download_fragment;
 
-pub async fn get_chunk_path(file_hash: &str, chunk_num: u64, temp: bool) -> Result<PathBuf, String> {
-    let mut chunk_path = dirs::cache_dir().ok_or("Unable to get the cache directory")?;
+pub fn get_cache_path() -> Result<PathBuf, String> {
+    let mut cache_path = dirs::cache_dir().ok_or("Unable to get the cache directory")?;
 
-    chunk_path.push("datafall");
+    cache_path.push("datafall");
+
+    Ok(cache_path)
+}
+
+pub async fn get_chunk_path(file_hash: &str, chunk_num: u64, temp: bool) -> Result<PathBuf, String> {
+    let mut chunk_path = get_cache_path()?;
     chunk_path.push(file_hash);
 
     if !chunk_path.is_dir() {

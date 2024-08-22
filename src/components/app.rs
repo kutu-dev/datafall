@@ -9,7 +9,7 @@ use reqwest::{Client, Url};
 
 use relm4_icons::icon_names;
 
-use crate::components::{DownloadItem, DownloadItemOutput, NewDownload, NewDownloadOutput, AboutDialog};
+use crate::components::{DownloadItem, DownloadItemOutput, NewDownload, NewDownloadOutput, AboutDialog, CleanCache};
 
 relm4::new_action_group!(MainActionGroup, "main");
 relm4::new_stateless_action!(OpenAboutAction, MainActionGroup, "open-about");
@@ -18,6 +18,7 @@ relm4::new_stateless_action!(CleanCacheAction, MainActionGroup, "clean-cache");
 pub struct App {
     new_download: Controller<NewDownload>,
     about_dialog: Controller<AboutDialog>,
+    clean_cache: Controller<CleanCache>,
     download_factory: FactoryVecDeque<DownloadItem>,
     client: Client,
 }
@@ -28,6 +29,7 @@ pub enum AppInput {
     StartNewDownload(Url),
     CancelDownload(DynamicIndex),
     OpenAbout,
+    CleanCache,
 }
 
 #[relm4::component(pub)]
@@ -50,6 +52,7 @@ impl Component for App {
         );
 
         let about_dialog = AboutDialog::builder().launch(()).detach();
+        let clean_cache = CleanCache::builder().launch(()).detach();
 
         let download_factory =
             FactoryVecDeque::builder()
@@ -63,6 +66,7 @@ impl Component for App {
         let model = Self {
             new_download,
             about_dialog,
+            clean_cache,
             download_factory,
             client,
         };
@@ -71,15 +75,16 @@ impl Component for App {
 
         let widgets = view_output!();
 
+        let cloned_sender = sender.clone();
         let open_about_action: RelmAction<OpenAboutAction> = {
             RelmAction::new_stateless(move |_| {
-                sender.input(Self::Input::OpenAbout);
+                cloned_sender.input(Self::Input::OpenAbout);
             })
         };
 
         let clean_cache_action: RelmAction<CleanCacheAction> = {
-            RelmAction::new_stateless(|_| {
-                println!("Clean cache");
+            RelmAction::new_stateless(move |_| {
+                sender.input(Self::Input::CleanCache);
             })
         };
 
@@ -97,11 +102,6 @@ impl Component for App {
         match input {
             Self::Input::CreateNewDownload => {
                 self.new_download.widget().present(root);
-                // TODO: Remove before 1.0.0
-                self.download_factory.guard().push_back((
-                    self.client.clone(),
-                    Url::parse("https://example.com").unwrap(),
-                ));
             }
 
             Self::Input::StartNewDownload(url) => {
@@ -116,7 +116,11 @@ impl Component for App {
 
             Self::Input::OpenAbout => {
                 self.about_dialog.widget().present(root);
-            }
+            },
+
+            Self::Input::CleanCache => {
+                self.clean_cache.widget().present(root);
+            },
         }
     }
 

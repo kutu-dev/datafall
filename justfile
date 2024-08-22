@@ -1,3 +1,14 @@
+# Default recipe of the justfile
+default: run-debug
+
+# Run the program in debug mode
+run-debug:
+  cargo run
+
+# Fix the formatting and fixable linting warnings
+fix:
+  cargo fix
+
 # Show this info message
 help:
   just --list
