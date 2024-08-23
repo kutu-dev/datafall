@@ -2,11 +2,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
+use relm4::{adw::prelude::*, prelude::*};
 
 use reqwest::Url;
 
-use relm4_icons::icon_names;
 
 pub struct NewDownload {
     error_text: String,

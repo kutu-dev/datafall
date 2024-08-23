@@ -2,9 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
-use reqwest::Url;
-use relm4_icons::icon_names;
+use relm4::{adw::prelude::*, prelude::*};
 use fs_extra::dir;
 use std::path::PathBuf;
 use std::fs;
@@ -75,17 +73,17 @@ impl Component for CleanCache {
     fn update (
         &mut self,
         input: Self::Input,
-        sender: ComponentSender<Self>,
-        root: &Self::Root,
+        _sender: ComponentSender<Self>,
+        _root: &Self::Root,
     ) {
         match input {
             Self::Input::Accept => {
                 if let Err(error) = fs::remove_dir_all(&self.cache_path) {
-                    println!("Unable to remove the cache dir");
+                    println!("Unable to remove the cache dir: {error}");
                 };
 
                 if let Err(error) = fs::create_dir(&self.cache_path) {
-                    println!("Unable to create a new cache dir");
+                    println!("Unable to create a new cache dir: {error}");
                 };
 
                 self.regenerate_body();

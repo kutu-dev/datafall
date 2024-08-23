@@ -2,11 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
+use relm4::prelude::*;
 
-use reqwest::Url;
 
-use relm4_icons::icon_names;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -32,9 +30,9 @@ impl Component for AboutDialog{
 
     fn update (
         &mut self,
-        input: Self::Input,
-        sender: ComponentSender<Self>,
-        root: &Self::Root,
+        _input: Self::Input,
+        _sender: ComponentSender<Self>,
+        _root: &Self::Root,
     ) {}
 
     view! {

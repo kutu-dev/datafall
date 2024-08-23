@@ -2,16 +2,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-use std::{io::Cursor, path::PathBuf};
+use std::io::Cursor;
 
 use tokio::{
-    fs::{self, File},
+    fs::{File},
     io,
 };
 
 use reqwest::{header::RANGE, Client, StatusCode, Url};
 
-use std::hash::{DefaultHasher, Hash, Hasher};
 
 pub async fn download_fragment(
     client: &Client,

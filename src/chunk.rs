@@ -72,7 +72,7 @@ pub async fn download_chunk(
     download_fragment::download_fragment(&client, url, temp_fragment_file, Some((start, end))).await?;
 
     fs::rename(temp_chunk_path, final_chunk_path).await
-        .map_err(|error| format!("Failed to rename the temporal fragment file"))?;
+        .map_err(|error| format!("Failed to rename the temporal fragment file: {error}"))?;
 
     Ok(())
 }

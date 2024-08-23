@@ -12,7 +12,6 @@ use relm4::gtk::{
     gio,
 };
 use relm4::prelude::*;
-use relm4_icons::icon_names;
 
 fn initialize_custom_icons() {
     gio::resources_register_include!("icons.gresource").unwrap();

@@ -4,9 +4,9 @@
 
 use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use chrono;
-use relm4::{adw::prelude::*, gtk::prelude::*, prelude::*};
+use relm4::{adw::prelude::*, prelude::*};
 use relm4_icons::icon_names;
-use reqwest::{Client, Response, Url};
+use reqwest::{Client, Url};
 use tokio::{fs::File, io};
 use dirs;
 
