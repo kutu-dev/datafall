@@ -58,6 +58,7 @@
           rustup
           addlicense
           just
+          cargo-cross
 
           pkg-config
           openssl
@@ -67,7 +68,6 @@
           librsvg
           adwaita-icon-theme
           dejavu_fonts
-          wrapGAppsHook4
         ];
       };
     });

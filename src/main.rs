@@ -7,7 +7,6 @@ use relm4::RelmApp;
 use datafall::components::App;
 
 use relm4::gtk::{
-    prelude::*,
     gdk,
     gio,
 };

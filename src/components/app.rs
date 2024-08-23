@@ -138,12 +138,6 @@ impl Component for App {
                 set_orientation: gtk::Orientation::Vertical,
 
                 adw::HeaderBar {
-                    #[wrap(Some)]
-                    set_title_widget = &adw::ViewSwitcher {
-                        set_policy: adw::ViewSwitcherPolicy::Wide,
-                        set_stack: Some(&stack),
-                    },
-
                     pack_start = &gtk::Button {
                         set_icon_name: icon_names::PLUS_LARGE,
                         connect_clicked => Self::Input::CreateNewDownload,
@@ -158,26 +152,15 @@ impl Component for App {
                         set_popover = &gtk::PopoverMenu::from_model(Some(&main_menu)) {}
                     },
                 },
-
-                #[name = "stack"]
-                adw::ViewStack {
+                
+                gtk::ScrolledWindow {
                     set_vexpand: true,
-
-                    add_titled[Some("Queue"), " Queue"] = &gtk::ScrolledWindow {
-                        #[local_ref]
-                         download_items -> gtk::ListBox {
-                            add_css_class: "boxed-list-separate",
-                            set_selection_mode: gtk::SelectionMode::None,
-                        }
-                    } -> {
-                        set_icon_name: Some(icon_names::ARROW4_DOWN),
-                    },
-
-                    add_titled[Some("History"), " History"] = &gtk::Label {
-                        set_label: "WORK IN PROGRESS",
-                    } -> {
-                        set_icon_name: Some(icon_names::CLOCK),
-                    },
+                        
+                    #[local_ref]
+                    download_items -> gtk::ListBox {
+                        add_css_class: "boxed-list-separate",
+                        set_selection_mode: gtk::SelectionMode::None,
+                    }
                 },
             }
         },
