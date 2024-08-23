@@ -6,8 +6,9 @@ run-debug:
   cargo run
 
 # Fix the formatting and fixable linting warnings
-fix:
+check:
   cargo fix
+  addlicense -l mpl .
 
 # Show this info message
 help:
@@ -20,6 +21,3 @@ update-flake:
 # See all the things that need to be done
 todo:
   rg TODO:
-
-license:
-  addlicense -l mpl .

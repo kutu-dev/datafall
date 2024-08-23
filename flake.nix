@@ -1,4 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
+#This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
@@ -25,21 +25,49 @@
   in {
     formatter = forAllSystems ({pkgs}: pkgs.alejandra);
 
-    devShells = forAllSystems ({pkgs}: {
-      default = pkgs.mkShell {
-        name = "datafall";
+    packages = forAllSystems ({pkgs}: {
+      datafall = pkgs.rustPlatform.buildRustPackage {
+        pname = "datafall";
+        version = "0.1.0";
+        cargoLock.lockFile = ./Cargo.lock;
+        src = pkgs.lib.cleanSource ./.;
+
+        buildInputs = with pkgs; [
+          openssl.dev
+          libadwaita
+        ];
+
         nativeBuildInputs = with pkgs; [
-          rustup
           pkg-config
           openssl
           ripgrep
-          gtk3
           gtk4
           libadwaita
           librsvg
           adwaita-icon-theme
           dejavu_fonts
+          wrapGAppsHook4
+        ];
+      };
+    });
+
+    devShells = forAllSystems ({pkgs}: {
+      default = pkgs.mkShell {
+        name = "datafall";
+        nativeBuildInputs = with pkgs; [
+          rustup
           addlicense
+          just
+
+          pkg-config
+          openssl
+          ripgrep
+          gtk4
+          libadwaita
+          librsvg
+          adwaita-icon-theme
+          dejavu_fonts
+          wrapGAppsHook4
         ];
       };
     });
