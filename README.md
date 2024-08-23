@@ -7,7 +7,7 @@
 ![Rust stable logo](https://img.shields.io/badge/Rust-stable-%23F74B00?style=flat&logo=rust)
 ![Static Badge](https://img.shields.io/badge/Nix-devShell-%235073BE?style=flat&logo=nixos&logoColor=FFFFFF)
 
-An Adwaita application for multithreded HTTP file downloading.
+An Adwaita application for multithreaded HTTP file downloading.
 </div>
 
 ## Installing
