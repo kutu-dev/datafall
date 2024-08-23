@@ -28,7 +28,7 @@
     packages = forAllSystems ({pkgs}: {
       datafall = pkgs.rustPlatform.buildRustPackage {
         pname = "datafall";
-        version = "0.1.0";
+        version = "1.0.0";
         cargoLock.lockFile = ./Cargo.lock;
         src = pkgs.lib.cleanSource ./.;
 

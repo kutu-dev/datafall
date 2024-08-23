@@ -134,6 +134,8 @@ impl Component for App {
 
     view! {
         main_window = adw::ApplicationWindow {
+            set_title: Some("DataFall"),
+
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
 
