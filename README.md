@@ -1,6 +1,6 @@
 <div align="center">
 <img src="./data/icons/icon.svg" alt="Logo of datafall" width="200">
-<h1>Nubosa</h1>
+<h1>Datafall</h1>
 
 ![Linux logo](https://img.shields.io/badge/Linux-%2301A1EE?style=flat&logo=linux&logoColor=FFFFFF)
 ![macOS logo](https://img.shields.io/badge/macOS-000000?style=flat&logo=apple&labelColor=000000)
